@@ -113,7 +113,7 @@ class BaseAgent(Agent):
             )
             
             # Modify chat context with retrieved memories
-            chat_ctx.items[-1] = rag_msg
+            chat_ctx.items.append(rag_msg)
             chat_ctx.items.append(user_msg)
             await self.update_chat_ctx(chat_ctx)
 
