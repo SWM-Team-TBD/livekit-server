@@ -8,15 +8,8 @@ from pydantic import BaseModel
 from typing import Dict, Optional, override
 from dataclasses import dataclass
 from mem0 import AsyncMemoryClient
-from basic_agent import BaseAgent
 import uuid
-
-@dataclass
-class UserData:
-    agents: Dict[str, Agent]
-    prev_agent: Optional[Agent]
-    user_id: str
-
+from basic_agent import BaseAgent, UserData
 
 RunContext_T = RunContext[UserData]
 
