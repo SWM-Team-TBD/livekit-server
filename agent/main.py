@@ -1,15 +1,14 @@
 from dotenv import load_dotenv
-from livekit.agents import RunContext, JobContext, WorkerOptions, cli
-from livekit.agents.voice import Agent, AgentSession
-from livekit.plugins import openai, silero, cartesia
+from livekit.agents import JobContext, WorkerOptions, cli
+from livekit.agents.voice import AgentSession
+from livekit.plugins import openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from basic_agent import BaseAgent, UserData
-from agents import MyAgent, SalesAgent
+from basic_agent import UserData
+from agents import MyAgent
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
     agent = MyAgent()
-    sales_agent = SalesAgent()
 
     session = AgentSession[UserData](
         stt=openai.STT(
@@ -24,7 +23,6 @@ async def entrypoint(ctx: JobContext):
         userdata=UserData(
             agents={
                 "my": agent,
-                "sales": sales_agent,
             },
             prev_agent=None,
             user_id="soma123",
