@@ -1,5 +1,5 @@
 from livekit.agents import RunContext, function_tool
-from basic_agent import BaseAgent, UserData
+from .basic_agent import BaseAgent, UserData
 
 RunContext_T = RunContext[UserData]
 

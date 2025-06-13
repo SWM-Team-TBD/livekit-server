@@ -3,8 +3,8 @@ from livekit.agents import JobContext, WorkerOptions, cli
 from livekit.agents.voice import AgentSession
 from livekit.plugins import openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from basic_agent import UserData
-from agents import MyAgent
+from .basic_agent import UserData
+from .agents import MyAgent
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
