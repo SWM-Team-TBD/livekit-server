@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "dotenv (>=0.9.9,<0.10.0)",
-    "livekit-agents[cartesia,deepgram,openai,silero,turn-detector] (==1.0.22)",
+    "livekit-agents[cartesia,deepgram,openai,silero,elevenlabs,turn-detector] (==1.0.22)",
     "mem0ai (>=0.1.102,<0.2.0)"
 ]
 

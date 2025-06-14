@@ -27,4 +27,4 @@ class MyAgent(BaseAgent):
     @function_tool()
     async def ask_user_name(self, _context: RunContext_T) -> str:
         print('AI가 사용자의 이름을 물어봅니다.')
-        return 'Soma'
+        return 'soma'

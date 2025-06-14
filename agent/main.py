@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from livekit.agents import JobContext, WorkerOptions, cli
 from livekit.agents.voice import AgentSession
-from livekit.plugins import openai, silero
+from livekit.plugins import openai, silero, elevenlabs
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from .basic_agent import UserData
 from .agents import MyAgent
@@ -17,7 +17,7 @@ async def entrypoint(ctx: JobContext):
         llm=openai.LLM(
             model="gpt-4o-mini",
         ),
-        tts=openai.TTS(voice="alloy"),
+        tts=elevenlabs.TTS(),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
         userdata=UserData(
