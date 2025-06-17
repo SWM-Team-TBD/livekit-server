@@ -1,4 +1,4 @@
-from livekit.agents import RunContext, function_tool
+from livekit.agents import function_tool
 from .base import BaseAgent, RunContext_T
 
 class MyAgent(BaseAgent):

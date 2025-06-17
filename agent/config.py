@@ -1,6 +1,4 @@
 import os
-import asyncio
-from dataclasses import dataclass
 from dotenv import load_dotenv
 from livekit.plugins import openai, silero, elevenlabs
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -52,9 +50,6 @@ def create_tts(
         model="eleven_multilingual_v2"
     )
     
-    print("Initial TTS _opts:", tts._opts)
-    print("Initial TTS _opts.voice_settings:", tts._opts.voice_settings)
-    
     # VoiceSettings 인스턴스 생성
     voice_settings = VoiceSettings(
         stability=float(stability),
@@ -64,22 +59,18 @@ def create_tts(
         use_speaker_boost=bool(use_speaker_boost)
     )
     
-    print("Created VoiceSettings:", voice_settings)
-    
     # voice_id와 voice_settings를 한 번에 업데이트
     tts.update_options(
         voice_id=voice_id,
         voice_settings=voice_settings
     )
     
-    print("Updated TTS _opts:", tts._opts)
-    print("Updated TTS _opts.voice_settings:", tts._opts.voice_settings)
     return tts
 
 def create_session_components(tts):
     """AgentSession에 필요한 컴포넌트들을 생성합니다."""
     return {
-        "stt": openai.STT(language="ko"),
+        "stt": openai.STT(language="ja"),
         "llm": openai.LLM(model="gpt-4o-mini"),
         "tts": tts,
         "vad": silero.VAD.load(),

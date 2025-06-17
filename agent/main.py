@@ -12,7 +12,7 @@ async def entrypoint(ctx: JobContext):
     voice_id = get_voice_id()
     print("Using voice_id:", voice_id)  # 실제 사용되는 voice_id 확인
     
-    tts = create_tts(voice_id, stability=1.0, similarity_boost=1.0, speed=0.8, use_speaker_boost=True)
+    tts = create_tts(voice_id, stability=1.0, similarity_boost=0.8, speed=0.8, style=0.2, use_speaker_boost=True)
     
     # 세션 컴포넌트 생성
     components = create_session_components(tts)
