@@ -22,10 +22,18 @@ class MyAgent(BaseAgent):
             tts=tts,
         )
         self.memory_client = AsyncMemoryClient()
+        self.feedback_agent = None  # FeedbackAgent 인스턴스 저장용
 
     async def on_enter(self) -> None:
         """에이전트가 시작될 때 호출되는 메서드"""
         print('MyAgent on_enter')
+        
+        # FeedbackAgent 참조 저장
+        self.feedback_agent = self.session.userdata.agents.get("feedback")
+        if self.feedback_agent:
+            print("MyAgent: FeedbackAgent 참조 저장 완료")
+        else:
+            print("MyAgent: FeedbackAgent를 찾을 수 없습니다")
         
         await self.session.say("""こんにちは、はじめまして！""")
 #         await self.session.say("""こんにちは、はじめまして！  
@@ -112,16 +120,15 @@ class MyAgent(BaseAgent):
 
     async def send_feedback_automatically(self, user_message: str):
         """사용자 메시지에 대해 자동으로 피드백을 제공합니다."""
-        feedback_agent = self.session.userdata.agents.get("feedback")
-        if feedback_agent:
+        if self.feedback_agent:
             print(f"MyAgent: 피드백 요청 - '{user_message}'")
             try:
-                await feedback_agent.process_user_message(user_message)
+                await self.feedback_agent.process_user_message(user_message)
                 print("MyAgent: 피드백 요청 완료")
             except Exception as e:
                 print(f"MyAgent: 피드백 요청 중 오류: {e}")
         else:
-            print("MyAgent: FeedbackAgent를 찾을 수 없습니다.")
+            print("MyAgent: FeedbackAgent가 설정되지 않았습니다.")
 
     @function_tool()
     async def compliment_user(self, message: str, _context: RunContext_T) -> None:

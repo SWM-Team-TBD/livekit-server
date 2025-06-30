@@ -38,7 +38,20 @@ class FeedbackAgent(BaseAgent):
 - 正しい表現の例を示してください
 - 学習者のモチベーションを高めるような言葉かけをしてください
 - すべてのフィードバックは韓国語で提供してください
-- 適切なfunction_toolを使用して構造化された フィードバックを提供してください""",
+- 適切なfunction_toolを使用して構造化されたフィードバックを提供してください
+
+【分析手順】
+1. まず文法の正確性をチェックしてください
+2. 語彙の適切性と豊富さを評価してください
+3. 敬語や丁寧語の使い分けを確認してください
+4. 文化的な背景やニュアンスを説明してください
+5. 改善点と良い点をバランスよく指摘してください
+6. 必ずprovide_analysis_toolを呼び出して詳細な分析を提供してください
+
+【分析のポイント】
+- 初級者: 基本的な文法と語彙の正確性を重視
+- 中級者: 自然な表現と敬語の使い分けを重視
+- 上級者: 文化的なニュアンスと高度な表現を重視""",
             tts=None,  # TTS 비활성화
         )
 
@@ -62,37 +75,11 @@ class FeedbackAgent(BaseAgent):
         
         print(f"FeedbackAgent: 독립적 메시지 처리 시작 - '{user_message}'")
         
-        # 간단한 메시지 분석 및 피드백 제공
-        user_text = user_message
-        
         # 더미 context 생성 (실제로는 RunContext가 필요하지만, 여기서는 None 사용)
         dummy_context = None
         
-        # 기본 피드백 제공 (실제로는 LLM이 분석해야 하지만, 테스트용으로 간단하게)
-        if "です" in user_text or "ます" in user_text:
-            # 정중한 표현 사용 - 격려
-            await self.provide_encouragement("정중한 표현을 잘 사용하고 있습니다!", dummy_context)
-        
-        elif "は" in user_text and "です" in user_text:
-            # 기본적인 문법 사용 - 문법 피드백
-            await self.provide_grammar_feedback(
-                original_text=user_text,
-                corrected_text=user_text,
-                explanation="기본적인 문법을 잘 사용하고 있습니다.",
-                _context=dummy_context
-            )
-        
-        elif len(user_text) < 10:
-            # 짧은 메시지 - 어휘 피드백
-            await self.provide_vocabulary_feedback(
-                word="다양한 표현",
-                usage_examples="더 자세한 표현을 시도해보세요. 예: '私は学生です' → '私は大学生で、日本語を勉強しています'",
-                _context=dummy_context
-            )
-        
-        else:
-            # 일반적인 경우 - 격려
-            await self.provide_encouragement("좋은 시도입니다! 계속 연습해보세요.", dummy_context)
+        # LLM 분석을 통한 피드백 제공
+        await self.provide_analysis_tool(user_message, dummy_context)
         
         print("FeedbackAgent: 독립적 메시지 처리 완료")
 
@@ -100,6 +87,54 @@ class FeedbackAgent(BaseAgent):
         """JSON 형태로 피드백을 서버에 출력합니다."""
         feedback_data["timestamp"] = asyncio.get_event_loop().time()
         print("FEEDBACK_AGENT_JSON:", json.dumps(feedback_data, ensure_ascii=False))
+
+    @function_tool()
+    async def provide_analysis_tool(self, user_text: str, _context: RunContext_T) -> None:
+        """사용자의 일본어 발화를 분석하여 종합적인 피드백을 제공합니다."""
+        
+        # LLM이 분석한 결과를 바탕으로 구조화된 피드백 생성
+        feedback_data = {
+            "type": "comprehensive_analysis",
+            "original_text": user_text,
+            "analysis": {
+                "grammar_accuracy": {
+                    "score": "문법 정확도 점수 (1-10)",
+                    "issues": "발견된 문법 문제들",
+                    "corrections": "수정 제안사항",
+                    "examples": "올바른 표현 예시"
+                },
+                "vocabulary_usage": {
+                    "score": "어휘 사용 점수 (1-10)",
+                    "strengths": "잘 사용된 어휘",
+                    "suggestions": "개선 가능한 어휘",
+                    "alternatives": "대안 표현들"
+                },
+                "politeness_level": {
+                    "score": "정중함 수준 (1-10)",
+                    "assessment": "정중함 수준 평가",
+                    "improvements": "정중함 개선 방안",
+                    "context_appropriateness": "상황 적절성"
+                },
+                "cultural_aspects": {
+                    "notes": "문화적 맥락 설명",
+                    "nuances": "미묘한 뉘앙스",
+                    "recommendations": "문화적 이해 개선 방안"
+                },
+                "overall_assessment": {
+                    "level": "전체적인 수준 평가",
+                    "strengths": "강점들",
+                    "areas_for_improvement": "개선 영역",
+                    "encouragement": "격려 메시지"
+                }
+            },
+            "recommendations": {
+                "immediate_focus": "즉시 개선할 점",
+                "long_term_goals": "장기 학습 목표",
+                "practice_suggestions": "연습 방법 제안"
+            },
+            "category": "comprehensive"
+        }
+        await self.send_json_feedback(feedback_data)
 
     @function_tool()
     async def provide_grammar_feedback(self, original_text: str, corrected_text: str, explanation: str, _context: RunContext_T) -> None:
