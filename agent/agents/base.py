@@ -1,8 +1,7 @@
-from livekit.agents import RunContext, tts, NOT_GIVEN, cli, llm
+from livekit.agents import RunContext, tts, llm
 from livekit.agents.voice import Agent
 from ..types.user_data import UserData
-import uuid
-from mem0 import AsyncMemoryClient
+from typing import override
 
 RunContext_T = RunContext[UserData]
 
@@ -12,58 +11,36 @@ class BaseAgent(Agent):
     def __init__(
         self, 
         instructions: str,
-        tts: tts.TTS | None = NOT_GIVEN,
+        tts: tts.TTS | None = None,
     ) -> None:
         super().__init__(
             instructions=instructions,
             tts=tts,
         )
-        self.memory_client = AsyncMemoryClient()
     
     def on_enter(self) -> None:
         """에이전트가 시작될 때 호출되는 메서드"""
-        print('BaseAgent on_enter') 
+        print('BaseAgent on_enter')
 
-    async def add_message_with_memory(self, chat_ctx: llm.ChatContext, user_msg: llm.ChatMessage):
-        """Add memories and Augment chat context with relevant memories"""
-        # <reasoning>
-        # 메시지 히스토리를 가져와서 이전 사용자 메시지까지의 모든 메시지를 수집
-        # </reasoning>
-        # messages = []
-        # for msg in reversed(chat_ctx.items):
-        #     if msg.type != "message":   
-        #         continue
-        #     if msg.role == "user":
-        #         break
-
-        #     messages.append({"role": msg.role, "content": msg.text_content})
-        # messages.reverse()  # 시간순으로 정렬
-        # messages.append({"role": "user", "content": user_msg.text_content})
-
-        # await self.memory_client.add(
-        #     messages, 
-        #     user_id=self.session.userdata.user_id
-        # )
-       
-        # Search for relevant memories
-        results = await self.memory_client.search(
-            user_msg.text_content, 
-            user_id=self.session.userdata.user_id,
-        )
-        print(f"memory_client.search 완료, results: {results}")
+    @override
+    async def on_user_turn_completed(
+        self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
+    ) -> None:
+        """사용자가 말을 마쳤을 때 호출되는 메서드 - 기본 메모리 처리를 수행합니다"""
+        print(f"BaseAgent: on_user_turn_completed 호출됨 - '{new_message.text_content}'")
         
-        # Augment context with retrieved memories
-        if results:
-            memories = ','.join([result["memory"] for result in results])
-            
-            rag_msg = llm.ChatMessage(
-                id=str(uuid.uuid4()),
-                type="message",
-                role="assistant",
-                content=[f"Relevant Memory: {memories}\n"],
-            )
-            
-            # Modify chat context with retrieved memories
-            chat_ctx.items.append(rag_msg)
-            chat_ctx.items.append(user_msg)
-            await self.update_chat_ctx(chat_ctx)
+        # 사용자 메시지인지 확인 (role이 "user"이고 type이 "message"인 경우만)
+        if new_message.role == "user" and new_message.type == "message" and new_message.text_content:
+            print(f"BaseAgent: 사용자 메시지 확인됨 - '{new_message.text_content}'")
+            # 자식 클래스에서 구현할 메서드 호출
+            await self.handle_user_message(new_message.text_content)
+        else:
+            print(f"BaseAgent: 시스템 메시지 또는 기타 메시지로 처리 건너뜀: role={new_message.role}, type={new_message.type}")
+        
+        # 부모 클래스의 메서드 호출
+        await super().on_user_turn_completed(turn_ctx, new_message)
+
+    async def handle_user_message(self, user_message: str):
+        """사용자 메시지를 처리하는 메서드 - 자식 클래스에서 오버라이드"""
+        print(f"BaseAgent: 기본 사용자 메시지 처리 - '{user_message}'")
+        pass 

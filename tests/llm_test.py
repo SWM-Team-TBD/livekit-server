@@ -2,8 +2,6 @@ import asyncio
 import json
 import os
 import sys
-from typing import List, Tuple, Dict, Any
-from janome.tokenizer import Tokenizer
 import openai
 from dotenv import load_dotenv
 import numpy as np
@@ -27,54 +25,6 @@ SYSTEM_PROMPT = """あなたはユーザーの親しい女性の友達であり�
 - カジュアルで親しみやすい日本語を使用してください"""
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env.local'))
-
-def get_japanese_tokens(text):
-    """일본어 텍스트에서 형태소를 추출합니다"""
-    if not text:
-        return set()
-    
-    tokenizer = Tokenizer()
-    # 더 많은 품사를 포함하여 토큰 추출
-    # 명사, 동사, 형용사, 조사, 감탄사, 부사, 접속사, 대명사 등
-    valid_pos = [
-        '名詞',      # 명사
-        '動詞',      # 동사
-        '形容詞',    # 형용사
-        '副詞',      # 부사
-        '接続助詞',  # 접속조사
-        '格助詞',    # 격조사
-        '終助詞',    # 종조사
-        '助動詞',    # 조동사
-        '感動詞',    # 감탄사
-        '代名詞',    # 대명사
-        '連体詞',    # 연체사
-        '接続詞',    # 접속사
-    ]
-    
-    # 일본어 불용어 목록
-    stop_words = {
-        'の', 'に', 'は', 'を', 'た', 'が', 'で', 'て', 'と', 'し', 'れ', 'さ', 'ある', 'いる', 'なる', 'する',
-        'だ', 'です', 'ます', 'です', 'ね', 'よ', 'な', 'か', 'も', 'や', 'から', 'まで', 'より', 'へ', 'で',
-        'って', 'なん', 'どう', 'どこ', 'いつ', 'なぜ', 'どんな', 'どの', 'これ', 'それ', 'あれ', 'どれ',
-        'この', 'その', 'あの', 'どの', 'ここ', 'そこ', 'あそこ', 'どこ', '今', '昨日', '明日', '今日'
-    }
-    
-    tokens = set()
-    for token in tokenizer.tokenize(text):
-        pos = token.part_of_speech.split(',')[0]
-        if pos in valid_pos:
-            # 기본형 사용 (동사, 형용사 등)
-            if hasattr(token, 'base_form') and token.base_form:
-                token_text = token.base_form
-            else:
-                # 기본형이 없으면 표면형 사용
-                token_text = token.surface
-            
-            # 불용어 제거 및 길이 필터링
-            if token_text not in stop_words and len(token_text) > 1:
-                tokens.add(token_text)
-    
-    return tokens
 
 def compute_sentence_embedding_similarity(expected_responses, actual_responses):
     """문장 임베딩 기반 코사인 유사도를 계산합니다"""
@@ -142,7 +92,8 @@ async def get_llm_response(user_message: str) -> str:
             temperature=0.7
         )
         
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        return content.strip() if content else "すみません、ちょっと分からないです。でも、カナタはいつでも味方だからね。"
     
     except Exception as e:
         print(f"LLM API 호출 중 오류 발생: {e}")
@@ -198,16 +149,11 @@ def save_test_results(actual_responses, expected_responses, user_inputs, results
     for i, (actual, expected, user_input) in enumerate(zip(actual_responses, expected_responses, user_inputs)):
         sentence_sim = float(results["sentence_results"]["individual_similarities"][i]) if i < len(results["sentence_results"]["individual_similarities"]) else 0.0
         
-        expected_tokens = get_japanese_tokens(expected)
-        actual_tokens = get_japanese_tokens(actual)
-        
         test_results["test_cases"].append({
             "case_number": i + 1,
             "user_input": user_input,
             "expected_response": expected,
             "actual_response": actual,
-            "expected_tokens": list(expected_tokens),
-            "actual_tokens": list(actual_tokens),
             "sentence_similarity": sentence_sim
         })
     

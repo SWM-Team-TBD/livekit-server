@@ -1,5 +1,8 @@
-from livekit.agents import function_tool
+from livekit.agents import function_tool, llm
 from .base import BaseAgent, RunContext_T
+from mem0 import AsyncMemoryClient
+import uuid
+from typing import override
 
 class MyAgent(BaseAgent):
     """사용자 정의 에이전트 클래스"""
@@ -18,7 +21,8 @@ class MyAgent(BaseAgent):
 - カジュアルで親しみやすい日本語を使用してください""",
             tts=tts,
         )
-    
+        self.memory_client = AsyncMemoryClient()
+
     async def on_enter(self) -> None:
         """에이전트가 시작될 때 호출되는 메서드"""
         print('MyAgent on_enter')
@@ -27,6 +31,97 @@ class MyAgent(BaseAgent):
 #         await self.session.say("""こんにちは、はじめまして！  
 # 私はカナタ、日本語での会話練習をサポートするあなたのパートナーだよ。  
 # わからないことがあれば、なんでも聞いてね。一緒に楽しく練習しよう！""")
+
+    @override
+    async def handle_user_message(self, user_message: str):
+        """사용자 메시지를 처리하는 메서드 - 메모리 처리 및 피드백 요청"""
+        print(f"MyAgent: 사용자 메시지 처리 시작 - '{user_message}'")
+        
+        # 매 발화마다 자동으로 피드백 요청
+        await self.send_feedback_automatically(user_message)
+        
+        # 메모리 처리 수행
+        await self.add_message_with_memory(user_message)
+
+    async def add_message_with_memory(self, user_message: str):
+        """Add memories and Augment chat context with relevant memories"""
+        
+        # 사용자 메시지 내용이 없으면 처리하지 않음
+        if not user_message:
+            print("사용자 메시지 내용이 없어 메모리 처리를 건너뜁니다.")
+            return
+        
+        # 현재 채팅 컨텍스트 가져오기
+        chat_ctx = self.chat_ctx
+        
+        # 현재 대화 히스토리를 수집하여 mem0에 저장
+        messages = []
+        for msg in reversed(chat_ctx.items):
+            if msg.type != "message":   
+                continue
+            if msg.role == "user":
+                break
+            messages.append({"role": msg.role, "content": msg.text_content})
+        messages.reverse()  # 시간순으로 정렬
+        messages.append({"role": "user", "content": user_message})
+
+        # 현재 대화를 mem0에 저장
+        await self.memory_client.add(
+            messages, 
+            user_id=self.session.userdata.user_id
+        )
+        print(f"현재 대화를 mem0에 저장 완료: {len(messages)}개 메시지")
+       
+        # 사용자 입력과 유사한 맥락의 이전 대화 검색
+        results = await self.memory_client.search(
+            user_message, 
+            user_id=self.session.userdata.user_id,
+            limit=3  # 상위 3개의 관련 대화만 가져오기
+        )
+        print(f"mem0 검색 완료, 관련 대화 {len(results)}개 발견")
+        
+        # 관련 대화가 있으면 context에 추가
+        if results:
+            # 관련 대화들을 정리하여 context에 추가
+            relevant_contexts = []
+            for i, result in enumerate(results, 1):
+                memory_text = result["memory"]
+                # 너무 긴 메모리는 요약
+                if len(memory_text) > 200:
+                    memory_text = memory_text[:200] + "..."
+                relevant_contexts.append(f"관련 대화 {i}: {memory_text}")
+            
+            context_summary = "\n".join(relevant_contexts)
+            
+            # 관련 대화 정보를 시스템 메시지로 추가
+            rag_msg = llm.ChatMessage(
+                id=str(uuid.uuid4()),
+                type="message",
+                role="system",
+                content=[f"이전 유사한 대화 맥락:\n{context_summary}\n\n이 정보를 참고하여 자연스럽게 대화를 이어가세요."],
+            )
+            
+            # chat context에 관련 대화 정보 추가
+            new_chat_ctx = chat_ctx.copy()
+            new_chat_ctx.items.append(rag_msg)
+            await self.update_chat_ctx(new_chat_ctx)
+            
+            print(f"관련 대화 맥락을 context에 추가: {len(relevant_contexts)}개")
+        else:
+            print("관련 대화가 없어 메모리 처리만 완료")
+
+    async def send_feedback_automatically(self, user_message: str):
+        """사용자 메시지에 대해 자동으로 피드백을 제공합니다."""
+        feedback_agent = self.session.userdata.agents.get("feedback")
+        if feedback_agent:
+            print(f"MyAgent: 피드백 요청 - '{user_message}'")
+            try:
+                await feedback_agent.process_user_message(user_message)
+                print("MyAgent: 피드백 요청 완료")
+            except Exception as e:
+                print(f"MyAgent: 피드백 요청 중 오류: {e}")
+        else:
+            print("MyAgent: FeedbackAgent를 찾을 수 없습니다.")
 
     @function_tool()
     async def compliment_user(self, message: str, _context: RunContext_T) -> None:
