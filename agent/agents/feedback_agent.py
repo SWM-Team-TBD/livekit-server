@@ -6,8 +6,11 @@ import uuid
 from typing import override
 
 class FeedbackAgent(BaseAgent):
-    """사용자의 일본어 발화에 대한 교육적 피드백을 제공하는 에이전트"""
-    
+    """
+    사용자의 일본어 발화에 대한 교육적 피드백을 제공하는 에이전트
+    - 독립적으로 동작하며, 사용자 메시지를 직접 받아 피드백만 제공
+    - TTS 없이 JSON 형태로 피드백 출력
+    """
     def __init__(self, tts=None) -> None:
         # TTS 없이 에이전트 생성
         super().__init__(
@@ -56,15 +59,12 @@ class FeedbackAgent(BaseAgent):
         )
 
     async def on_enter(self) -> None:
-        """에이전트가 시작될 때 호출되는 메서드"""
         print('FeedbackAgent on_enter')
 
     @override
     async def handle_user_message(self, user_message: str):
-        """사용자 메시지를 처리하는 메서드 - 피드백 제공"""
+        """사용자 메시지를 처리하는 메서드 - 독립적으로 피드백만 제공"""
         print(f"FeedbackAgent: 사용자 메시지 처리 시작 - '{user_message}'")
-        
-        # 독립적인 피드백 처리
         await self.process_user_message(user_message)
 
     async def process_user_message(self, user_message: str):
@@ -74,13 +74,8 @@ class FeedbackAgent(BaseAgent):
             return
         
         print(f"FeedbackAgent: 독립적 메시지 처리 시작 - '{user_message}'")
-        
-        # 더미 context 생성 (실제로는 RunContext가 필요하지만, 여기서는 None 사용)
         dummy_context = None
-        
-        # LLM 분석을 통한 피드백 제공
         await self.provide_analysis_tool(user_message, dummy_context)
-        
         print("FeedbackAgent: 독립적 메시지 처리 완료")
 
     async def send_json_feedback(self, feedback_data: dict):

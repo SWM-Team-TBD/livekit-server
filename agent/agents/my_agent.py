@@ -18,22 +18,15 @@ class MyAgent(BaseAgent):
 - 応答は短く、自然な会話のようにしてください（1-2文程度）
 - 長い説明や説教は避けて、親しみやすい口調で話してください
 - ユーザーの気持ちに共感し、簡潔に励ましやアドバイスを提供してください
+- 必ず日本語の口語体、TTSが読めるように話してください
 - カジュアルで親しみやすい日本語を使用してください""",
             tts=tts,
         )
         self.memory_client = AsyncMemoryClient()
-        self.feedback_agent = None  # FeedbackAgent 인스턴스 저장용
 
     async def on_enter(self) -> None:
         """에이전트가 시작될 때 호출되는 메서드"""
         print('MyAgent on_enter')
-        
-        # FeedbackAgent 참조 저장
-        self.feedback_agent = self.session.userdata.agents.get("feedback")
-        if self.feedback_agent:
-            print("MyAgent: FeedbackAgent 참조 저장 완료")
-        else:
-            print("MyAgent: FeedbackAgent를 찾을 수 없습니다")
         
         await self.session.say("""こんにちは、はじめまして！""")
 #         await self.session.say("""こんにちは、はじめまして！  
@@ -42,12 +35,8 @@ class MyAgent(BaseAgent):
 
     @override
     async def handle_user_message(self, user_message: str):
-        """사용자 메시지를 처리하는 메서드 - 메모리 처리 및 피드백 요청"""
+        """사용자 메시지를 처리하는 메서드 - 메모리 처리만 수행"""
         print(f"MyAgent: 사용자 메시지 처리 시작 - '{user_message}'")
-        
-        # 매 발화마다 자동으로 피드백 요청
-        await self.send_feedback_automatically(user_message)
-        
         # 메모리 처리 수행
         await self.add_message_with_memory(user_message)
 
@@ -117,18 +106,6 @@ class MyAgent(BaseAgent):
             print(f"관련 대화 맥락을 context에 추가: {len(relevant_contexts)}개")
         else:
             print("관련 대화가 없어 메모리 처리만 완료")
-
-    async def send_feedback_automatically(self, user_message: str):
-        """사용자 메시지에 대해 자동으로 피드백을 제공합니다."""
-        if self.feedback_agent:
-            print(f"MyAgent: 피드백 요청 - '{user_message}'")
-            try:
-                await self.feedback_agent.process_user_message(user_message)
-                print("MyAgent: 피드백 요청 완료")
-            except Exception as e:
-                print(f"MyAgent: 피드백 요청 중 오류: {e}")
-        else:
-            print("MyAgent: FeedbackAgent가 설정되지 않았습니다.")
 
     @function_tool()
     async def compliment_user(self, message: str, _context: RunContext_T) -> None:
