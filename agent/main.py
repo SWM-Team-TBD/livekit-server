@@ -4,11 +4,36 @@ from .config import load_environment, create_tts, create_session_components, get
 from .types.user_data import UserData
 from .agents.my_agent import MyAgent
 from .agents.feedback_agent import FeedbackAgent
-import asyncio
+import json
+
+def extract_user_info(ctx: JobContext) -> dict:
+    # 본인(Agent)의 정보를 ctx.agent에서 추출
+    agent = getattr(ctx, "agent", None)
+    user_info = {
+        "user_id": "unknown",
+        "user_name": "사용자",
+        "japanese_level": "beginner",
+        "preferences": {}
+    }
+    if agent:
+        user_info["user_id"] = getattr(agent, "identity", "unknown")
+        user_info["user_name"] = getattr(agent, "name", "사용자")
+        meta = getattr(agent, "metadata", None)
+        if meta:
+            try:
+                meta_dict = json.loads(meta)
+                user_info.update(meta_dict)
+            except Exception:
+                pass
+    return user_info
 
 async def entrypoint(ctx: JobContext):
     """애플리케이션의 진입점"""
     await ctx.connect()
+    
+    # 사용자 정보 추출
+    user_info = extract_user_info(ctx)
+    print(f"[entrypoint] 사용자 정보: {user_info}")
     
     # 환경 변수 로드 및 TTS 생성
     voice_id = get_voice_id()
@@ -25,7 +50,10 @@ async def entrypoint(ctx: JobContext):
         userdata=UserData(
             agents={},
             prev_agent=None,
-            user_id="soma123",
+            user_id=user_info["user_id"],
+            user_name=user_info["user_name"],
+            japanese_level=user_info.get("japanese_level", "beginner"),
+            preferences=user_info.get("preferences", {}),
         ),
     )
 
@@ -49,7 +77,7 @@ def main():
     cli.run_app(
         WorkerOptions(
             entrypoint_fnc=entrypoint,
-            agent_name="kanata_agent",
+            # agent_name="kanata_agent",
         ),
     )
 
