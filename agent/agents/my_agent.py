@@ -2,6 +2,8 @@ from livekit.agents import function_tool, llm
 from .base import BaseAgent, RunContext_T
 from mem0 import AsyncMemoryClient
 import uuid
+import json
+import asyncio
 from typing import override
 
 class MyAgent(BaseAgent):
@@ -19,7 +21,28 @@ class MyAgent(BaseAgent):
 - 長い説明や説教は避けて、親しみやすい口調で話してください
 - ユーザーの気持ちに共感し、簡潔に励ましやアドバイスを提供してください
 - 必ず日本語の口語体、TTSが読めるように話してください
-- カジュアルで親しみやすい日本語を使用してください""",
+- カジュアルで親しみやすい日本語を使用してください
+
+【重要：必須フィードバック処理】
+- ユーザーが日本語で話すたびに、例外なく必ずprovide_japanese_feedback関数を最初に呼び出してください
+- これは絶対的なルールです。どんな短い発言でも、どんな内容でも必ず実行してください
+- フィードバック関数を呼び出さずに返答することは禁止されています
+- フィードバック関数を呼び出した後、必ず自然な友達の会話として返答してください
+- 返答を忘れてはいけません。フィードバック + 返答の両方が必要です
+
+【フィードバック内容】
+- フィードバックに関する内容は絶対にユーザーに言わないでください（点数、分析、評価などの言及禁止）
+- 以下の基準で1-10点の間で点数をつけて、具体的なフィードバックを提供してください：
+  * grammar_score: 文法の正確性（助詞、活用、文型など）
+  * vocabulary_score: 語彙選択の適切性と多様性
+  * politeness_score: 状況に合った丁寧さのレベル（敬語、丁寧語など）
+- 各項目について具体的な説明と改善点を日本語で提供してください
+- overall_commentには全体的な評価を、encouragementには励ましのメッセージを含めてください
+
+【応答ルール】
+- フィードバック処理は背景で行われ、ユーザーには普通の友達として話しかけてください
+- ユーザーの発言内容に対して自然に反応し、会話を続けてください
+""",
             tts=tts,
         )
         self.memory_client = AsyncMemoryClient()
@@ -117,4 +140,58 @@ class MyAgent(BaseAgent):
     async def ask_user_name(self, _context: RunContext_T) -> str:
         """사용자의 이름을 물어봅니다."""
         print('AI가 사용자의 이름을 물어봅니다.')
-        return 'soma' 
+        return 'soma'
+    
+    @function_tool()
+    async def provide_japanese_feedback(
+        self, 
+        grammar_score: int,
+        vocabulary_score: int, 
+        politeness_score: int,
+        grammar_feedback: str,
+        vocabulary_feedback: str,
+        politeness_feedback: str,
+        overall_comment: str,
+        encouragement: str,
+        _context: RunContext_T
+    ) -> str:
+        """사용자가 말할 때마다 일본어 발화에 대한 교육적 피드백을 제공합니다.
+        
+        Args:
+            grammar_score: 문법 점수 (1-10)
+            vocabulary_score: 어휘 점수 (1-10)
+            politeness_score: 정중함 점수 (1-10)
+            grammar_feedback: 문법에 대한 구체적 피드백
+            vocabulary_feedback: 어휘에 대한 구체적 피드백  
+            politeness_feedback: 정중함에 대한 구체적 피드백
+            overall_comment: 전체적인 평가 및 코멘트
+            encouragement: 격려 메시지
+        """
+        
+        # 피드백 데이터 생성
+        feedback_data = {
+            "type": "japanese_feedback",
+            "timestamp": asyncio.get_event_loop().time(),
+            "scores": {
+                "grammar": f"{grammar_score}/10",
+                "vocabulary": f"{vocabulary_score}/10", 
+                "politeness": f"{politeness_score}/10",
+                "average": f"{(grammar_score + vocabulary_score + politeness_score) / 3:.1f}/10"
+            },
+            "detailed_feedback": {
+                "grammar": grammar_feedback,
+                "vocabulary": vocabulary_feedback,
+                "politeness": politeness_feedback
+            },
+            "overall_comment": overall_comment,
+            "encouragement": encouragement
+        }
+        
+        # JSON 형태로 피드백 출력 (백그라운드 처리)
+        print("JAPANESE_FEEDBACK_JSON:", json.dumps(feedback_data, ensure_ascii=False, indent=2))
+        
+        # 피드백 처리 완료를 알리고 응답 생성을 유도
+        print(f"[FEEDBACK] 피드백 분석 완료 - 평균 점수: {(grammar_score + vocabulary_score + politeness_score) / 3:.1f}/10")
+        
+        # LLM에게 응답을 생성하도록 명시적으로 요청
+        return "피드백 분석이 완료되었습니다. 이제 사용자의 발언에 대해 자연스럽게 반응해주세요." 

@@ -3,7 +3,6 @@ from livekit.agents.voice import AgentSession
 from .config import load_environment, create_tts, create_session_components, get_voice_id
 from .types.user_data import UserData
 from .agents.my_agent import MyAgent
-from .agents.feedback_agent import FeedbackAgent
 import json
 
 def extract_user_info(ctx: JobContext) -> dict:
@@ -29,6 +28,7 @@ def extract_user_info(ctx: JobContext) -> dict:
 
 async def entrypoint(ctx: JobContext):
     """애플리케이션의 진입점"""
+    print(f"[entrypoint] MyAgent 활성화 (대화 + 피드백 통합)")
     await ctx.connect()
     
     # 사용자 정보 추출
@@ -57,27 +57,10 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
-    # MyAgent 생성 및 설정 (친구 역할 - TTS 사용)
+    # MyAgent 생성 및 설정 (친구 역할 + 피드백 기능 통합)
     my_agent = MyAgent(tts=tts)
     session.userdata.agents["my"] = my_agent
-    
-    # FeedbackAgent 생성 및 설정 (선생님 역할 - TTS 없음, JSON 출력)
-    feedback_agent = FeedbackAgent(tts=None)
-    session.userdata.agents["feedback"] = feedback_agent
 
-    # 명시적 dispatch: MyAgent와 FeedbackAgent 모두에 사용자 메시지 브로드캐스트
-    # MyAgent는 응답 agent로 동작, FeedbackAgent는 독립적으로 피드백만 담당
-    orig_my_handle = my_agent.handle_user_message
-    
-    async def broadcast_handle_user_message(user_message: str):
-        # MyAgent 처리 (메모리 저장 및 응답)
-        await orig_my_handle(user_message)
-        # FeedbackAgent 독립적 처리 (피드백만)
-        await feedback_agent.handle_user_message(user_message)
-    
-    my_agent.handle_user_message = broadcast_handle_user_message
-
-    # 기본 에이전트로 MyAgent 시작 (TTS 응답)
     await session.start(
         agent=my_agent,
         room=ctx.room,
